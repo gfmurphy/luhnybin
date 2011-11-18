@@ -74,7 +74,7 @@ class Luhnybin
   end
 
   def separator?(char)
-    char == char('-') || char(' ')
+    char == char('-') || char == char(' ')
   end
 
   def char(char)
@@ -91,5 +91,6 @@ end
 if __FILE__ == $0
   STDIN.each do |line|
     STDOUT << line.mask_cc_number
+    STDOUT.flush
   end
 end
