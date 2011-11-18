@@ -1,6 +1,22 @@
 #!/usr/bin/env ruby
+require 'set'
+require 'forwardable'
+class Mask
+  extend Forwardable
+  def_delegators :@set, :include?, :empty?
+
+  def initialize(range=nil)
+    @set = Set.new
+    self << range
+  end
+
+  def <<(range)
+    range.to_a.each { |n| @set << n }
+  end
+end
+
 class Luhnybin
-  MINIMUM = 14
+  RANGE = (14..16)
   SUMMED_DOUBLES = [0, 2, 4, 6, 8, 1, 3, 5, 7, 9].freeze
 
   def initialize(text)
@@ -13,53 +29,56 @@ class Luhnybin
   end
 
   private
-  def filter(start=0, index=0, digits=[])
-    return 0 if index == @text.length || digits.length > 16
-
-    count = luhn(digits)
-    return count if count > 0
+  def filter(start=0, index=0, digits=[], mask=Mask.new)
+    return mask if index == @text.length
 
     char = @text[index]
     digit = digit?(char)
 
     if digit
-      value = char - ?0
+      value = char - char('0')
       digits.unshift(value)
+      start += 1 if digits.length > RANGE.max
     elsif !separator?(char)
       start = index
-      digits.clear
     end
 
-    lc = filter(start, index + 1, digits)
-    if lc > 0 && digit
-      @text[index] = ?X
-      lc -= 1
-    end
-    return lc
+    mask = filter(start, index + 1, digits, luhn_mask(start, index, digits, mask))
+    @text[index] = char('X') if mask.include?(index) && digit
+    return mask
   end
 
-  def luhn(digits)
+  def luhn_mask(start, index, digits, mask)
+    digits = digits[0, RANGE.max]
     length = digits.length
-    return 0 if length < MINIMUM
+    return mask if length < RANGE.min
 
-    length.downto(MINIMUM) do |n|
-      i = 0
-      sum = digits[0,n].reduce(0) do |tot, d|
-        tot += i.even? ? d : SUMMED_DOUBLES[d]
+    length.downto(RANGE.min) do |n|
+      i = -1
+      sum = digits.inject(0) do |tot, d|
         i += 1
-        tot
+        tot += i.odd? ? SUMMED_DOUBLES[d] : d
       end
-      return n if sum % 10 == 0
+
+      if sum % 10 == 0
+        mask << (start..index)
+        return mask
+      end
     end
-    return 0
+
+    return mask
   end
 
   def digit?(char)
-    char.between?(?0, ?9)
+    char.between?(char('0'), char('9'))
   end
 
   def separator?(char)
-    char == ?- || char == 32
+    char == char('-') || char(' ')
+  end
+
+  def char(char)
+    RUBY_VERSION =~ /^1\.8/ ? char[0] : char.ord
   end
 end
 
