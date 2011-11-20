@@ -1,20 +1,5 @@
 #!/usr/bin/env ruby
 require 'set'
-require 'forwardable'
-class Mask
-  extend Forwardable
-  def_delegators :@set, :include?, :empty?
-
-  def initialize(range=nil)
-    @set = Set.new
-    self << range
-  end
-
-  def <<(range)
-    range.to_a.each { |n| @set << n }
-  end
-end
-
 class Luhnybin
   RANGE = (14..16)
   SUMMED_DOUBLES = [0, 2, 4, 6, 8, 1, 3, 5, 7, 9].freeze
@@ -29,7 +14,7 @@ class Luhnybin
   end
 
   private
-  def filter(start=0, index=0, digits=[], mask=Mask.new)
+  def filter(start=0, index=0, digits=[], mask=Set.new)
     return mask if index == @text.length
 
     char = @text[index]
@@ -41,9 +26,11 @@ class Luhnybin
       start += 1 if digits.length > RANGE.max
     elsif !separator?(char)
       start = index
+      digits.clear
     end
 
-    mask = filter(start, index + 1, digits, luhn_mask(start, index, digits, mask))
+    mask = filter(start, index + 1, digits,
+      luhn_mask(start, index, digits, mask))
     @text[index] = char('X') if mask.include?(index) && digit
     return mask
   end
@@ -53,17 +40,17 @@ class Luhnybin
     length = digits.length
     return mask if length < RANGE.min
 
-    length.downto(RANGE.min) do |n|
-      i = -1
-      sum = digits.inject(0) do |tot, d|
-        i += 1
-        tot += i.odd? ? SUMMED_DOUBLES[d] : d
-      end
+    i = -1
+    sum = digits.reduce(0) do |tot, d|
+      i += 1
+      tot += i.odd? ? SUMMED_DOUBLES[d] : d
+    end
 
-      if sum % 10 == 0
-        mask << (start..index)
-        return mask
-      end
+    if sum % 10 == 0
+      index.downto(start) { |i| mask << i }
+      return mask
+    else
+      luhn_mask(start, index, digits[0, length - 1], mask)
     end
 
     return mask
