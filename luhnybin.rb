@@ -1,8 +1,18 @@
 #!/usr/bin/env ruby
+def char_as_int(c)
+  RUBY_VERSION =~ /^1\.8/ ? c[0] : c.ord
+end
+
 require 'set'
 class Luhnybin
   RANGE = (14..16)
   SUMMED_DOUBLES = [0, 2, 4, 6, 8, 1, 3, 5, 7, 9].freeze
+
+  DASH  = char_as_int('-')
+  SPACE = char_as_int(' ')
+  ZERO  = char_as_int('0')
+  NINE  = char_as_int('9')
+  MASK  = char_as_int('X')
 
   def initialize(text)
     @text = text.unpack('c*')
@@ -21,7 +31,7 @@ class Luhnybin
     digit = digit?(char)
 
     if digit
-      value = char - char('0')
+      value = char - ZERO
       digits.unshift(value)
       start += 1 if digits.length > RANGE.max
     elsif !separator?(char)
@@ -31,7 +41,7 @@ class Luhnybin
 
     mask = filter(start, index + 1, digits,
       luhn_mask(start, index, digits, mask))
-    @text[index] = char('X') if mask.include?(index) && digit
+    @text[index] = MASK if mask.include?(index) && digit
     return mask
   end
 
@@ -57,15 +67,11 @@ class Luhnybin
   end
 
   def digit?(char)
-    char.between?(char('0'), char('9'))
+    char.between?(ZERO, NINE)
   end
 
   def separator?(char)
-    char == char('-') || char == char(' ')
-  end
-
-  def char(char)
-    RUBY_VERSION =~ /^1\.8/ ? char[0] : char.ord
+    char == DASH || char == SPACE
   end
 end
 
