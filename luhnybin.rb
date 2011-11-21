@@ -60,10 +60,17 @@ class Luhnybin
       index.downto(start) { |i| mask << i }
       return mask
     else
-      luhn_mask(start, index, digits[0, length - 1], mask)
+      luhn_mask(next_digit(start), index, digits[0, length - 1], mask)
     end
 
     return mask
+  end
+
+  def next_digit(index)
+    begin
+      index += 1
+    end while !digit?(@text[index])
+    return index
   end
 
   def digit?(char)
